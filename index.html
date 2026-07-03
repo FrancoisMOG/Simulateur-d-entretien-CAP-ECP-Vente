@@ -1,0 +1,1191 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulateur Entretien Conseiller de Beauté</title>
+
+    <!-- Google Fonts : élégance beauté -->
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;900&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+
+    <!-- Librairies -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+    <style>
+        /* --- VARIABLES COULEURS MONDE ESTHÉTIQUE --- */
+        :root {
+            --primary: #C08497;
+            --primary-dark: #A66B7E;
+            --primary-light: #F0D5DD;
+            --primary-glow: rgba(192, 132, 151, 0.35);
+            --secondary: #C9A96E;
+            --secondary-dark: #A88B55;
+            --secondary-light: #F5ECD7;
+            --accent: #8B5E83;
+            --bg-color: #FBF5F0;
+            --bg-warm: #F5EAE0;
+            --card-bg: #FFFFFF;
+            --text-main: #3D2B33;
+            --text-light: #8B6B7B;
+            --text-muted: #B89AA8;
+            --danger: #D4566A;
+            --danger-light: #FDE8EC;
+            --success: #7BAE7F;
+            --stage-bg-top: #2D1B24;
+            --stage-bg-bottom: #3F2233;
+            --radius: 18px;
+            --radius-sm: 10px;
+            --shadow: 0 10px 30px -5px rgba(183, 110, 121, 0.13), 0 4px 10px -2px rgba(0, 0, 0, 0.04);
+            --shadow-lg: 0 20px 50px -10px rgba(139, 94, 131, 0.18), 0 8px 20px -4px rgba(0, 0, 0, 0.06);
+            --transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Lato', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* Ambiance lumineuse subtile en fond */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 600px 400px at 15% 30%, rgba(192, 132, 151, 0.10) 0%, transparent 70%),
+                radial-gradient(ellipse 500px 500px at 85% 15%, rgba(201, 169, 110, 0.09) 0%, transparent 70%),
+                radial-gradient(ellipse 400px 300px at 50% 85%, rgba(139, 94, 131, 0.07) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Typographie titres */
+        h1, h2, h3, .hero-title {
+            font-family: 'Playfair Display', serif;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        /* --- BOUTONS --- */
+        .btn {
+            padding: 12px 26px;
+            border: none;
+            border-radius: 50px;
+            font-family: 'Lato', sans-serif;
+            font-weight: 700;
+            font-size: 0.92rem;
+            letter-spacing: 0.3px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 60%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .btn:hover::after { opacity: 1; }
+        .btn:disabled { background-color: #EDE4E8; color: #B89AA8; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+        .btn:disabled::after { display: none; }
+        .btn-primary { background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); color: white; box-shadow: 0 4px 15px var(--primary-glow); }
+        .btn-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 25px var(--primary-glow); }
+        .btn-secondary { background: var(--card-bg); color: var(--text-main); border: 1.5px solid #E8D5DD; }
+        .btn-secondary:hover { border-color: var(--primary); color: var(--primary-dark); background: #FDF8F9; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-outline { background: transparent; border: 1px solid rgba(255,255,255,0.25); color: white; }
+        .btn-outline:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.4); }
+
+        /* --- CHAMPS --- */
+        .input-field {
+            width: 100%; padding: 14px 18px; border: 2px solid #E8D5DD; border-radius: 50px;
+            font-size: 1rem; font-family: 'Lato', sans-serif; transition: var(--transition); outline: none;
+            background-color: white; color: var(--text-main);
+        }
+        .input-field::placeholder { color: var(--text-muted); }
+        .input-field:focus { border-color: var(--primary); box-shadow: 0 0 0 4px var(--primary-glow); }
+
+        /* --- CARTE PRINCIPALE --- */
+        .card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-lg);
+            padding: 2.5rem 2.5rem 2rem;
+            text-align: center;
+            max-width: 520px;
+            width: 100%;
+            margin: auto;
+            position: relative;
+            z-index: 2;
+        }
+
+        .landing-img {
+            width: 100%;
+            height: 220px;
+            object-fit: cover;
+            border-radius: var(--radius-sm);
+            margin-bottom: 1.8rem;
+            box-shadow: 0 8px 20px rgba(139, 94, 131, 0.12);
+        }
+
+        .hero-title {
+            font-size: 2.4rem;
+            margin-bottom: 0.3rem;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--primary-dark) 50%, var(--secondary-dark) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .hero-subtitle {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.15rem;
+            color: var(--primary-dark);
+            margin-bottom: 0.6rem;
+            font-weight: 600;
+        }
+        .hero-desc { margin-bottom: 2rem; color: var(--text-light); line-height: 1.7; font-size: 0.95rem; }
+
+        /* --- NAVIGATION ÉCRANS --- */
+        #app-container { flex: 1; position: relative; width: 100%; height: 100%; z-index: 1; }
+
+        .screen {
+            position: absolute; inset: 0;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            opacity: 0; pointer-events: none; transition: opacity 0.5s ease-in-out;
+            padding: 20px; z-index: 1;
+        }
+        .screen.active { opacity: 1; pointer-events: all; z-index: 10; }
+
+        /* --- GRILLE MODES --- */
+        .mode-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; width: 100%; max-width: 860px; margin-top: 2rem; }
+        .mode-card {
+            background: white; padding: 2rem 1.5rem; border-radius: var(--radius);
+            box-shadow: var(--shadow); cursor: pointer; transition: var(--transition);
+            border: 2px solid transparent; text-align: center;
+        }
+        .mode-card:hover { transform: translateY(-6px); border-color: var(--secondary); box-shadow: var(--shadow-lg); }
+        .mode-icon { font-size: 2.8rem; margin-bottom: 0.8rem; display: block; }
+        .mode-card h3 { font-size: 1.15rem; margin-bottom: 0.5rem; color: var(--text-main); }
+        .mode-card p { font-size: 0.82rem; color: var(--text-light); line-height: 1.5; }
+
+        /* --- PROFILS --- */
+        .profile-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 20px; width: 100%; max-width: 1000px; padding: 20px; overflow-y: auto;
+            max-height: 70vh; justify-content: center;
+        }
+
+        .profile-intro {
+            text-align: center; max-width: 720px; margin-bottom: 1.5rem;
+            color: var(--text-light); line-height: 1.7; font-size: 0.92rem;
+            background: white; padding: 1.5rem 2rem; border-radius: var(--radius);
+            box-shadow: var(--shadow); border-left: 4px solid var(--secondary);
+        }
+        .profile-intro p { margin-bottom: 0.7rem; }
+        .profile-intro p:last-child { margin-bottom: 0; }
+        .profile-intro strong { color: var(--primary-dark); }
+
+        .profile-card {
+            background: white; border-radius: var(--radius); padding: 1.5rem;
+            display: flex; flex-direction: column; align-items: center;
+            box-shadow: var(--shadow); cursor: pointer; border: 2px solid transparent;
+            transition: var(--transition);
+        }
+        .profile-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
+        .profile-card.selected { border-color: var(--secondary); background: linear-gradient(135deg, #FDF8F5 0%, #FBF0E8 100%); transform: scale(1.03); }
+
+        .avatar { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin-bottom: 1rem; border: 3px solid var(--bg-warm); transition: var(--transition); }
+        .profile-card.selected .avatar { border-color: var(--secondary); }
+
+        .profile-role {
+            font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1.5px; padding: 4px 12px;
+            border-radius: 50px; margin-bottom: 0.6rem; font-weight: 700; font-family: 'Lato', sans-serif;
+        }
+        .role-rh { background-color: var(--primary-light); color: var(--accent); }
+        .role-boutique { background-color: var(--secondary-light); color: var(--secondary-dark); }
+
+        /* --- ARÈNE D'ENTRETIEN --- */
+        .arena-container {
+            width: 100%; max-width: 1400px; height: 90vh;
+            display: flex; flex-direction: row;
+            background: white; border-radius: 24px; overflow: hidden;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid #F0D5DD;
+            margin: 20px auto;
+        }
+
+        .interview-stage {
+            background: linear-gradient(180deg, var(--stage-bg-top) 0%, var(--stage-bg-bottom) 100%);
+            width: 360px; min-width: 300px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            color: white; padding: 24px;
+            border-right: 1px solid rgba(255,255,255,0.08);
+            flex-shrink: 0;
+            position: relative;
+        }
+        /* Lueur subtile derrière l'avatar */
+        .interview-stage::before {
+            content: '';
+            position: absolute;
+            width: 180px; height: 180px;
+            border-radius: 50%;
+            background: radial-gradient(circle, var(--primary-glow) 0%, transparent 70%);
+            top: 50%; left: 50%;
+            transform: translate(-50%, -65%);
+            opacity: 0.4;
+            pointer-events: none;
+            transition: opacity 0.4s;
+        }
+        .speaking .interview-stage::before,
+        .interview-stage.speaking::before { opacity: 0.9; }
+
+        .stage-avatar {
+            width: 120px; height: 120px; border-radius: 50%;
+            border: 3px solid var(--primary); margin-bottom: 1rem;
+            transition: all 0.4s; position: relative; z-index: 2;
+            object-fit: cover;
+        }
+        .speaking .stage-avatar,
+        .interview-stage.speaking .stage-avatar {
+            border-color: var(--secondary);
+            box-shadow: 0 0 30px rgba(201, 169, 110, 0.5);
+        }
+        .interviewer-info { text-align: center; width: 100%; position: relative; z-index: 2; }
+        .stage-name { font-family: 'Playfair Display', serif; font-size: 1.35rem; font-weight: 700; margin-bottom: 6px; }
+        .stage-role { font-size: 0.82rem; opacity: 0.75; background: rgba(255,255,255,0.12); padding: 3px 12px; border-radius: 50px; display: inline-block; letter-spacing: 0.5px; }
+
+        .question-bubble {
+            background: rgba(255,255,255,0.08); backdrop-filter: blur(12px);
+            padding: 18px; border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.12);
+            font-size: 0.95rem; text-align: left; margin-top: 24px;
+            width: 100%; font-style: italic; line-height: 1.6;
+            position: relative; z-index: 2;
+            color: rgba(255,255,255,0.92);
+        }
+
+        .btn-back-interview {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);
+            color: rgba(255,255,255,0.7); padding: 8px 14px; border-radius: 50px;
+            cursor: pointer; z-index: 20; font-size: 0.82rem; font-family: 'Lato', sans-serif;
+            transition: var(--transition); display: flex; align-items: center; gap: 6px;
+        }
+        .btn-back-interview:hover { background: rgba(255,255,255,0.15); color: white; }
+
+        /* --- ZONE DE CONTRÔLE --- */
+        .controls-area {
+            flex: 1; padding: 40px;
+            background: linear-gradient(180deg, #FDF9F6 0%, var(--bg-color) 100%);
+            display: flex; flex-direction: column; gap: 22px;
+            overflow-y: auto; align-items: center; justify-content: flex-start;
+        }
+
+        .progress-header { width: 100%; max-width: 600px; display: flex; align-items: center; gap: 15px; margin-bottom: 6px; }
+        .progress-bar { flex: 1; height: 6px; background: var(--primary-light); border-radius: 3px; overflow: hidden; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%); width: 0%; transition: width 0.4s ease; border-radius: 3px; }
+        #q-progress { font-weight: 700; min-width: 55px; color: var(--primary-dark); font-size: 0.9rem; }
+
+        .input-mode-switch {
+            display: flex; background: var(--bg-warm); padding: 4px; border-radius: 50px; width: fit-content;
+        }
+        .switch-btn {
+            padding: 10px 22px; border-radius: 50px; border: none; cursor: pointer;
+            font-weight: 700; color: var(--text-light); background: transparent;
+            transition: var(--transition); font-family: 'Lato', sans-serif; font-size: 0.88rem;
+        }
+        .switch-btn.active { background: white; color: var(--primary-dark); box-shadow: 0 2px 8px rgba(192, 132, 151, 0.2); }
+
+        .text-input-container {
+            background: white; border-radius: var(--radius); padding: 24px;
+            box-shadow: var(--shadow); display: none;
+            width: 100%; max-width: 800px; box-sizing: border-box;
+            border: 2px solid transparent;
+        }
+        .text-input-container.active { display: block; border-color: var(--primary); }
+        textarea.answer-area {
+            width: 100%; height: 150px; padding: 16px; border: 2px solid #E8D5DD; border-radius: var(--radius-sm);
+            resize: none; font-size: 1rem; font-family: 'Lato', sans-serif; margin-top: 12px;
+            color: var(--text-main); line-height: 1.6;
+        }
+        textarea.answer-area::placeholder { color: var(--text-muted); }
+        textarea.answer-area:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 4px var(--primary-glow); }
+
+        .recorder-ui {
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px;
+            width: 100%; max-width: 800px; display: none;
+        }
+        .recorder-ui.active { display: flex; }
+
+        .recorder-controls {
+            display: flex; align-items: center; gap: 22px;
+            background: white; padding: 14px 32px; border-radius: 50px;
+            box-shadow: var(--shadow); border: 1px solid #F0D5DD;
+        }
+
+        .record-btn {
+            width: 68px; height: 68px; border-radius: 50%; border: none;
+            background: linear-gradient(135deg, var(--danger) 0%, #B94458 100%);
+            color: white; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s; box-shadow: 0 4px 15px rgba(212, 86, 106, 0.3);
+        }
+        .record-btn:hover { transform: scale(1.08); }
+        .record-btn.recording { animation: pulse-rose 1.5s infinite; }
+        .timer { font-family: 'Lato', sans-serif; font-size: 1.4rem; font-weight: 700; color: var(--text-light); min-width: 75px; letter-spacing: 1px; }
+
+        #webcam-preview {
+            width: 100%; max-width: 480px; height: 270px;
+            border-radius: var(--radius); background-color: #1A0F14;
+            transform: scaleX(-1); margin-bottom: 10px; display: none;
+            box-shadow: var(--shadow-lg); border: 3px solid var(--primary); object-fit: cover;
+        }
+
+        .result-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 1.5rem; }
+
+        #toast-container { position: fixed; top: 20px; right: 20px; z-index: 100; display: flex; flex-direction: column; gap: 10px; }
+        .toast {
+            background: white; padding: 14px 20px; border-radius: 50px;
+            box-shadow: var(--shadow); border-left: 4px solid var(--primary);
+            animation: slideIn 0.35s ease; display: flex; align-items: center; gap: 10px;
+            font-size: 0.9rem; color: var(--text-main);
+        }
+
+        /* --- ANIMATIONS --- */
+        @keyframes pulse-rose {
+            0% { box-shadow: 0 0 0 0 rgba(212, 86, 106, 0.55); }
+            70% { box-shadow: 0 0 0 18px rgba(212, 86, 106, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(212, 86, 106, 0); }
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes gentle-float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+        }
+
+        /* Ornement doré subtil sur la carte d'accueil */
+        .card::before {
+            content: '';
+            position: absolute;
+            top: -1px; left: 30%; right: 30%; height: 3px;
+            background: linear-gradient(90deg, transparent, var(--secondary), transparent);
+            border-radius: 2px;
+        }
+
+        /* --- RESPONSIVE --- */
+        @media (max-width: 900px) {
+            .arena-container { flex-direction: column; height: auto; min-height: 90vh; margin: 10px; border-radius: 18px; }
+            .interview-stage { width: 100%; padding: 24px; border-right: none; border-bottom: 1px solid rgba(255,255,255,0.08); }
+            .controls-area { padding: 24px; height: 100%; }
+            .hero-title { font-size: 1.9rem; }
+            .mode-grid { grid-template-columns: 1fr; max-width: 360px; }
+        }
+
+        /* Accessibilité : réduction de mouvement */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+        }
+
+        /* Scrollbar stylisée */
+        .controls-area::-webkit-scrollbar, .profile-grid::-webkit-scrollbar { width: 6px; }
+        .controls-area::-webkit-scrollbar-track, .profile-grid::-webkit-scrollbar-track { background: transparent; }
+        .controls-area::-webkit-scrollbar-thumb, .profile-grid::-webkit-scrollbar-thumb { background: var(--primary-light); border-radius: 3px; }
+        .controls-area::-webkit-scrollbar-thumb:hover, .profile-grid::-webkit-scrollbar-thumb:hover { background: var(--primary); }
+    </style>
+</head>
+<body>
+
+    <div id="toast-container" aria-live="polite"></div>
+
+    <main id="app-container">
+
+        <!-- ÉCRAN 1 : ACCUEIL -->
+        <section id="screen-home" class="screen active" role="region" aria-label="Accueil">
+            <div class="card">
+                <img src="https://images.unsplash.com/photo-1596462502278-27bfdc403348?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" alt="Produits de beauté et cosmétiques" class="landing-img">
+                <h1 class="hero-title">Simulateur d'Entretien</h1>
+                <p class="hero-subtitle">Conseiller de Beauté &mdash; Cosmétique</p>
+                <p class="hero-desc">Préparez-vous efficacement à votre recrutement dans l'univers de la beauté. Entraînez-vous aux questions RH et techniques spécifiques au métier de conseiller en cosmétique.</p>
+                <div style="text-align: left;">
+                    <label for="user-name" style="font-weight: 700; color: var(--text-main); font-size: 0.9rem;">Votre prénom :</label>
+                    <input type="text" id="user-name" class="input-field" placeholder="Ex: Camille" style="margin-top: 8px;" aria-required="true">
+                </div>
+                <button class="btn btn-primary" style="margin-top: 1.6rem; width: 100%; justify-content: center; font-size: 1rem; padding: 14px 26px;" onclick="app.goToModeSelection()">Commencer l'entraînement</button>
+            </div>
+        </section>
+
+        <!-- ÉCRAN 2 : CHOIX DU MODE -->
+        <section id="screen-mode" class="screen" role="region" aria-label="Choix du mode">
+            <h2 style="font-size: 1.8rem; color: var(--text-main); margin-bottom: 0.3rem;">Choisissez votre entraînement</h2>
+            <p style="color: var(--text-light); font-size: 0.92rem;">Sélectionnez le type de questions que vous souhaitez travailler.</p>
+            <div class="mode-grid">
+                <div class="mode-card" onclick="app.selectMode('RH')" role="button" tabindex="0" aria-label="Mode Ressources Humaines">
+                    <span class="mode-icon">💼</span>
+                    <h3>Ressources Humaines</h3>
+                    <p>Motivation, comportement, intégration en équipe et projet professionnel.</p>
+                </div>
+                <div class="mode-card" onclick="app.selectMode('TECH')" role="button" tabindex="0" aria-label="Mode Technique">
+                    <span class="mode-icon">💄</span>
+                    <h3>Technique (Métier)</h3>
+                    <p>Conseil client, diagnostics, merchandising, hygiène et gestes cabine.</p>
+                </div>
+                <div class="mode-card" onclick="app.selectMode('MIX')" role="button" tabindex="0" aria-label="Mode Mixte">
+                    <span class="mode-icon">✨</span>
+                    <h3>Mixte (Complet)</h3>
+                    <p>Préparation complète mêlant questions RH et techniques.</p>
+                </div>
+            </div>
+            <button class="btn btn-secondary" style="margin-top: 2rem;" onclick="app.showScreen('screen-home')">Retour</button>
+        </section>
+
+        <!-- ÉCRAN 3 : SÉLECTION PROFIL -->
+        <section id="screen-profile" class="screen" role="region" aria-label="Sélection de l'interlocuteur">
+            <h2 style="margin-bottom: 1rem; font-size: 1.6rem;">Choisissez votre interlocuteur</h2>
+            <div class="profile-intro">
+                <p><strong>Ressources Humaines (RH) :</strong> Ces recruteurs évaluent votre <strong>motivation</strong>, votre <strong>savoir-être</strong> et votre capacité à créer du lien avec la clientèle. Attendez-vous à des questions comportementales et de projet professionnel.</p>
+                <p><strong>Responsable Boutique :</strong> Ces recruteurs jugent vos <strong>connaissances techniques</strong> en cosmétique, votre capacité de <strong>conseil</strong>, votre rigueur sur le <strong>merchandising</strong> et la maîtrise des <strong>gestes professionnels en cabine</strong>.</p>
+            </div>
+            <div id="profile-list" class="profile-grid"></div>
+            <div style="margin-top: 20px; display: flex; gap: 12px;">
+                <button class="btn btn-secondary" onclick="app.showScreen('screen-mode')">Retour</button>
+                <button id="btn-start-interview" class="btn btn-primary" disabled onclick="app.startInterview()">Lancer l'entretien</button>
+            </div>
+        </section>
+
+        <!-- ÉCRAN 4 : ARÈNE D'ENTRETIEN -->
+        <section id="screen-arena" class="screen" role="region" aria-label="Simulation d'entretien">
+            <div class="arena-container">
+                <!-- COLONNE GAUCHE : INTERLOCUTEUR -->
+                <div class="interview-stage" id="interview-stage">
+                    <button class="btn-back-interview" onclick="app.stopAndReturn()" aria-label="Quitter l'entretien">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                        Quitter
+                    </button>
+                    <img src="" alt="Interlocuteur" class="stage-avatar" id="stage-avatar">
+                    <div class="interviewer-info">
+                        <h2 id="stage-name" class="stage-name">Nom</h2>
+                        <span id="stage-role" class="stage-role">Rôle</span>
+                    </div>
+                    <div class="question-bubble" id="question-text">Question...</div>
+                </div>
+
+                <!-- COLONNE DROITE : CONTRÔLES -->
+                <div class="controls-area">
+                    <div class="progress-header">
+                        <span id="q-progress">1/5</span>
+                        <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+                    </div>
+                    <p id="status-message" style="color: var(--text-light); font-size: 0.88rem; text-align: center; font-weight: 400;"></p>
+
+                    <div class="input-mode-switch" role="tablist" aria-label="Mode de saisie">
+                        <button id="mode-audio-btn" class="switch-btn active" role="tab" aria-selected="true" onclick="interviewEngine.setInputMode('audio')">🎤 Audio</button>
+                        <button id="mode-video-btn" class="switch-btn" role="tab" aria-selected="false" onclick="interviewEngine.setInputMode('video')">📹 Vidéo</button>
+                        <button id="mode-text-btn" class="switch-btn" role="tab" aria-selected="false" onclick="interviewEngine.setInputMode('text')">⌨️ Texte</button>
+                    </div>
+
+                    <div id="recorder-container" class="recorder-ui">
+                        <video id="webcam-preview" autoplay muted playsinline></video>
+                        <div class="recorder-controls">
+                            <button class="btn btn-secondary" style="padding: 8px 14px; border-radius: 50%;" onclick="interviewEngine.replayQuestion()" aria-label="Réécouter la question">🔁</button>
+                            <button id="record-btn" class="record-btn" onclick="interviewEngine.toggleRecording()" aria-label="Démarrer ou arrêter l'enregistrement">
+                                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                            </button>
+                            <span class="timer" id="timer">00:00</span>
+                        </div>
+                    </div>
+
+                    <div id="text-input-ui" class="text-input-container">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <button class="btn btn-secondary" style="padding: 8px 14px; border-radius: 50px; font-size: 0.85rem;" onclick="interviewEngine.replayQuestion()">🔁 Réécouter</button>
+                            <span style="font-size:0.78rem; color:var(--text-muted);">Min. 20 caractères</span>
+                        </div>
+                        <textarea id="answer-text-area" class="answer-area" placeholder="Saisissez votre réponse ici..." aria-label="Votre réponse écrite"></textarea>
+                    </div>
+
+                    <button id="btn-next-q" class="btn btn-primary" style="padding: 14px 44px; font-size: 1.05rem;" onclick="interviewEngine.submitAnswer()" disabled>Valider & Continuer</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ÉCRAN 5 : RÉSULTATS -->
+        <section id="screen-results" class="screen" role="region" aria-label="Résultats">
+            <div class="card">
+                <div style="font-size: 3.5rem; margin-bottom: 0.8rem;">🌸</div>
+                <h2 style="font-size: 1.8rem; color: var(--text-main);">Entraînement Terminé</h2>
+                <p style="margin: 0.8rem 0; color: var(--text-light);">Votre session a bien été enregistrée.</p>
+                <div style="background: var(--bg-warm); padding: 18px 22px; border-radius: var(--radius-sm); margin-bottom: 1.5rem; text-align: left; line-height: 1.8; font-size: 0.92rem;">
+                    <p><strong>Poste :</strong> <span id="res-job"></span></p>
+                    <p><strong>Mode :</strong> <span id="res-mode"></span></p>
+                    <p><strong>Questions traitées :</strong> <span id="res-count"></span></p>
+                </div>
+                <div class="result-actions"></div>
+                <button class="btn btn-secondary" style="margin-top: 1.2rem;" onclick="location.reload()">🔄 Nouvel entraînement</button>
+            </div>
+        </section>
+    </main>
+
+    <audio id="audio-player" style="display:none;"></audio>
+
+    <script>
+        /* ============================================
+           MÉTIERS DE LA BEAUTÉ
+           ============================================ */
+        const JOB_TITLES = [
+            "Conseiller de beauté",
+            "Conseiller en cosmétique",
+            "Vendeur en parfumerie",
+            "Esthéticien(ne)",
+            "Chef de rayon beauté",
+            "Conseiller de vente en parapharmacie"
+        ];
+
+        /* ============================================
+           10 QUESTIONS RH — SECTEUR BEAUTÉ
+           ============================================ */
+        const BEAUTE_QUESTIONS_RH = [
+            "Qu'est-ce qui vous motive à travailler dans la vente de produits de beauté, et pourquoi avoir choisi ce secteur dès votre début de carrière ?",
+            "Comment décririez-vous votre manière d'être avec les clients, notamment lorsque vous devez les mettre à l'aise ou créer une relation de confiance ?",
+            "Qu'attendez-vous de votre premier environnement professionnel, et de quelle manière pensez-vous pouvoir vous intégrer dans une équipe déjà en place ?",
+            "Pouvez-vous me parler d'une situation, même en formation ou en stage, où vous avez dû gérer un client hésitant ou stressé ? Comment avez-vous réagi ?",
+            "Qu'est-ce qui, selon vous, fait la différence entre un bon vendeur en cosmétique et un vendeur excellent ?",
+            "Comment vous sentez-vous à l'idée de travailler dans un environnement dynamique, avec des objectifs de vente et des périodes de forte affluence ?",
+            "Lorsque vous êtes face à une difficulté ou à une remarque d'un client, quelle est votre première réaction intérieure et comment la gérez-vous ?",
+            "Qu'est-ce qui vous attire dans notre enseigne en particulier, et comment pensez-vous pouvoir y évoluer à moyen terme ?",
+            "Comment vous organisez-vous pour rester motivé et concentré tout au long d'une journée de travail, même lorsque le rythme est soutenu ?",
+            "Si vous deviez décrire l'attitude professionnelle que vous souhaitez incarner en boutique, quels seraient les trois mots qui vous représentent le mieux ?"
+        ];
+
+        /* ============================================
+           20 QUESTIONS TECHNIQUES — SECTEUR BEAUTÉ
+           ============================================ */
+        const BEAUTE_QUESTIONS_TECH = [
+            "Comment réalises tu un diagnostic rapide de peau pour orienter un client vers un soin adapté ?",
+            "Quels critères utilises tu pour conseiller une teinte de fond de teint à un client ?",
+            "Comment proposes tu une routine de soins simple à un client qui débute en cosmétique ?",
+            "Donne moi un exemple concret de vente additionnelle que tu pourrais proposer après la vente d'un fond de teint.",
+            "Comment présentes tu les bénéfices d'un sérum à un client qui hésite ?",
+            "Quelles questions techniques poses tu pour comprendre les besoins d'un client en soin du visage ?",
+            "Comment aides tu un client à choisir un parfum lorsqu'il ne sait pas ce qu'il aime ?",
+            "Quelles sont les règles d'hygiène essentielles avant et après une prestation en cabine ?",
+            "Comment fais tu tester un produit, que ce soit la texture, le parfum ou la couvrance, en respectant les règles d'hygiène ?",
+            "Quelles vérifications fais tu en début de journée sur ton rayon maquillage ?",
+            "Comment t'assures tu que les produits sont correctement mis en valeur sur le linéaire ?",
+            "Que fais tu lorsqu'un produit demandé par un client est en rupture ?",
+            "Quelles sont les étapes techniques d'un encaissement sécurisé ?",
+            "Comment contrôles tu l'état des testeurs pour garantir une utilisation sûre ?",
+            "Quels critères techniques utilises tu pour conseiller un soin capillaire adapté ?",
+            "Comment réponds tu à un client qui trouve un produit trop cher ?",
+            "Quelles sont les étapes techniques d'une épilation à la cire en cabine ?",
+            "Que vérifies tu sur un produit avant de le conseiller, comme le PAO, la composition ou l'usage ?",
+            "Comment t'organises tu techniquement lorsqu'il y a plusieurs clients à conseiller en même temps ?",
+            "Quelles actions techniques peux tu mettre en place pour améliorer la satisfaction et la fidélisation client ?"
+        ];
+
+        /* ============================================
+           INTERLOCUTEURS
+           ============================================ */
+        const INTERVIEWERS = [
+            { id: 'rh_m',   name: 'Paul Martin',    gender: 'male',   role: 'RH',       avatar: 'https://picsum.photos/seed/paul-beauty/200/200' },
+            { id: 'rh_f',   name: 'Sophie Durand',  gender: 'female', role: 'RH',       avatar: 'https://picsum.photos/seed/sophie-beauty/200/200' },
+            { id: 'bout_m', name: 'Thomas Leroy',   gender: 'male',   role: 'Boutique', avatar: 'https://picsum.photos/seed/thomas-beauty/200/200' },
+            { id: 'bout_f', name: 'Céline Dubois',  gender: 'female', role: 'Boutique', avatar: 'https://picsum.photos/seed/celine-beauty/200/200' }
+        ];
+
+        /* Questions génériques de secours (ne devraient pas être utilisées) */
+        const GENERIC_QUESTIONS = [
+            { audioPath: '', fallbackText: 'Bonjour, présentez-vous brièvement.' },
+            { audioPath: '', fallbackText: 'Pourquoi avez-vous choisi ce métier ?' },
+            { audioPath: '', fallbackText: 'Quelles sont vos principales qualités ?' }
+        ];
+
+        /* ============================================
+           GESTIONNAIRE D'APPLICATION
+           ============================================ */
+        class AppManager {
+            constructor() {
+                this.currentMode = null;
+                this.selectedProfiles = [];
+                this.screens = document.querySelectorAll('.screen');
+            }
+
+            showScreen(id) {
+                this.screens.forEach(s => s.classList.remove('active'));
+                document.getElementById(id).classList.add('active');
+            }
+
+            goToModeSelection() {
+                const name = document.getElementById('user-name').value;
+                if (!name.trim()) { showToast("Veuillez saisir votre prénom.", "error"); return; }
+                this.showScreen('screen-mode');
+            }
+
+            selectMode(mode) {
+                this.currentMode = mode;
+                this.renderProfiles();
+                this.showScreen('screen-profile');
+            }
+
+            renderProfiles() {
+                const container = document.getElementById('profile-list');
+                container.innerHTML = '';
+                this.selectedProfiles = [];
+
+                let available = INTERVIEWERS;
+                if (this.currentMode === 'RH')  available = available.filter(p => p.role === 'RH');
+                if (this.currentMode === 'TECH') available = available.filter(p => p.role === 'Boutique');
+
+                available.forEach(profile => {
+                    const card = document.createElement('div');
+                    card.className = 'profile-card';
+                    card.setAttribute('role', 'button');
+                    card.setAttribute('tabindex', '0');
+                    card.onclick = () => this.toggleProfileSelection(profile.id, card);
+                    card.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.toggleProfileSelection(profile.id, card); } };
+                    const roleClass = profile.role === 'RH' ? 'role-rh' : 'role-boutique';
+                    const displayRole = profile.role === 'Boutique' ? 'Resp. Boutique' : profile.role;
+                    card.innerHTML = `<span class="profile-role ${roleClass}">${displayRole}</span><img src="${profile.avatar}" class="avatar" alt="${profile.name}"><h3 style="font-size:1.05rem;">${profile.name}</h3>`;
+                    container.appendChild(card);
+                });
+            }
+
+            toggleProfileSelection(id, card) {
+                const idx = this.selectedProfiles.findIndex(p => p.id === id);
+                if (idx > -1) {
+                    this.selectedProfiles.splice(idx, 1);
+                    card.classList.remove('selected');
+                } else {
+                    this.selectedProfiles.push(INTERVIEWERS.find(p => p.id === id));
+                    card.classList.add('selected');
+                }
+                this.validateSelection();
+            }
+
+            validateSelection() {
+                const btn = document.getElementById('btn-start-interview');
+                const hasRh  = this.selectedProfiles.some(p => p.role === 'RH');
+                const hasBout = this.selectedProfiles.some(p => p.role === 'Boutique');
+
+                let valid = false;
+                if (this.currentMode === 'RH'  && hasRh)    valid = true;
+                if (this.currentMode === 'TECH' && hasBout)  valid = true;
+                if (this.currentMode === 'MIX'  && hasRh && hasBout) valid = true;
+
+                btn.disabled = !valid;
+            }
+
+            startInterview() {
+                const userName = document.getElementById('user-name').value;
+                const userJob  = "Conseiller de beauté";
+                interviewEngine.init(this.currentMode, this.selectedProfiles, userName, userJob);
+                this.showScreen('screen-arena');
+            }
+
+            stopAndReturn() {
+                if (confirm("Voulez-vous vraiment quitter l'entretien ? Votre progression sera perdue.")) {
+                    interviewEngine.cleanup();
+                    this.showScreen('screen-home');
+                }
+            }
+        }
+
+        /* ============================================
+           MOTEUR D'ENTRETIEN
+           ============================================ */
+        class InterviewEngine {
+            constructor() {
+                this.queue = [];
+                this.currentIndex = 0;
+                this.userName = "";
+                this.userJob = "";
+                this.interviewData = [];
+                this.isRecording = false;
+                this.timer = null;
+                this.seconds = 0;
+                this.currentInputMode = 'audio';
+                this.synth = window.speechSynthesis;
+                this.mediaRecorder = null;
+                this.chunks = [];
+                this.currentBlob = null;
+                this.hasUsedText  = false;
+                this.hasUsedAudio = false;
+                this.hasUsedVideo = false;
+                this.currentStream = null;
+            }
+
+            /* Initialisation de la session */
+            async init(mode, profiles, userName, userJob) {
+                this.userName = userName;
+                this.userJob  = userJob;
+                this.queue = [];
+                this.interviewData = [];
+                this.hasUsedText  = false;
+                this.hasUsedAudio = false;
+                this.hasUsedVideo = false;
+
+                /* Réinitialiser le textarea et son listener */
+                const oldArea = document.getElementById('answer-text-area');
+                const newArea = oldArea.cloneNode(true);
+                oldArea.parentNode.replaceChild(newArea, oldArea);
+                newArea.addEventListener('input', () => {
+                    document.getElementById('btn-next-q').disabled = newArea.value.trim().length < 20;
+                });
+
+                /* Déterminer si le métier correspond au secteur beauté */
+                const isBeauteJob = JOB_TITLES.some(t => this.userJob.toLowerCase().includes(t.toLowerCase()));
+
+                if (isBeauteJob) {
+                    profiles.forEach(profile => {
+                        let questions = [];
+                        if (profile.role === 'RH') {
+                            questions = BEAUTE_QUESTIONS_RH.map((text, i) => ({
+                                id: `beaute_rh_${i}`, fallbackText: text, audioPath: ''
+                            }));
+                        } else if (profile.role === 'Boutique') {
+                            questions = BEAUTE_QUESTIONS_TECH.map((text, i) => ({
+                                id: `beaute_tech_${i}`, fallbackText: text, audioPath: ''
+                            }));
+                        }
+                        questions.forEach(q => this.queue.push({ ...q, interviewer: profile }));
+                    });
+                } else {
+                    /* Fallback générique */
+                    if (mode === 'MIX') {
+                        let all = [];
+                        profiles.forEach(p => { GENERIC_QUESTIONS.forEach(q => all.push({ ...q, interviewer: p })); });
+                        all.sort(() => Math.random() - 0.5);
+                        this.queue = all.slice(0, 5);
+                    } else {
+                        const p = profiles[0];
+                        GENERIC_QUESTIONS.forEach(q => this.queue.push({ ...q, interviewer: p }));
+                    }
+                }
+
+                /* Mélanger en mode mixte */
+                if (mode === 'MIX') this.queue.sort(() => Math.random() - 0.5);
+
+                this.currentIndex = 0;
+                this.updateProgress();
+                this.loadQuestion();
+            }
+
+            /* Charger une question */
+            loadQuestion() {
+                if (this.currentIndex >= this.queue.length) { this.finishInterview(); return; }
+
+                const q = this.queue[this.currentIndex];
+                document.getElementById('stage-name').innerText   = q.interviewer.name;
+                const displayRole = q.interviewer.role === 'Boutique' ? 'Resp. Boutique' : q.interviewer.role;
+                document.getElementById('stage-role').innerText   = displayRole;
+                document.getElementById('stage-avatar').src       = q.interviewer.avatar;
+                document.getElementById('question-text').innerText = `\u00AB ${q.fallbackText} \u00BB`;
+
+                /* Remise à zéro de la zone de réponse */
+                const textArea = document.getElementById('answer-text-area');
+                textArea.value = "";
+                document.getElementById('btn-next-q').disabled = true;
+                this.stopRecording();
+                this.stopVideoPreview();
+                this.setInputMode('audio');
+                this.updateProgress();
+                this.playAudio(q);
+            }
+
+            /* Lecture vocale de la question */
+            playAudio(q) {
+                const stage = document.getElementById('interview-stage');
+                stage.classList.add('speaking');
+                document.getElementById('status-message').innerText = "L'interlocuteur pose sa question...";
+
+                const onEnd = () => {
+                    stage.classList.remove('speaking');
+                    document.getElementById('status-message').innerText = "À votre tour ! Choisissez votre mode de réponse.";
+                };
+
+                if (q.audioPath) {
+                    const player = document.getElementById('audio-player');
+                    player.src = q.audioPath;
+                    player.onended = onEnd;
+                    player.play().catch(() => this.speak(q.fallbackText, onEnd, q.interviewer));
+                } else {
+                    this.speak(q.fallbackText, onEnd, q.interviewer);
+                }
+            }
+
+            /* Synthèse vocale */
+            speak(text, callback, interviewer) {
+                if (this.synth.speaking) this.synth.cancel();
+                const ut = new SpeechSynthesisUtterance(text);
+                ut.lang = 'fr-FR';
+                ut.rate = 0.95;
+
+                /* Tentative d'association voix / genre */
+                const voices = this.synth.getVoices();
+                if (interviewer && voices.length > 0) {
+                    const gender = interviewer.gender;
+                    const match = voices.find(v => {
+                        if (!v.lang.includes('fr')) return false;
+                        const n = v.name.toLowerCase();
+                        if (gender === 'male')   return n.includes('male') || n.includes('homme') || n.includes('thomas') || n.includes('paul');
+                        if (gender === 'female') return n.includes('female') || n.includes('femme') || n.includes('julie') || n.includes('sophie') || n.includes('celine');
+                        return false;
+                    });
+                    if (match) ut.voice = match;
+                }
+
+                ut.onend = callback;
+                ut.onerror = callback;
+                this.synth.speak(ut);
+            }
+
+            /* Réécouter la question */
+            replayQuestion() {
+                this.synth.cancel();
+                const player = document.getElementById('audio-player');
+                player.pause();
+                player.currentTime = 0;
+                this.playAudio(this.queue[this.currentIndex]);
+            }
+
+            /* --- GESTION WEBCAM --- */
+            async startVideoPreview() {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                    this.currentStream = stream;
+                    const vp = document.getElementById('webcam-preview');
+                    vp.srcObject = stream;
+                    vp.style.display = 'block';
+                    await vp.play();
+                } catch (err) {
+                    console.error(err);
+                    showToast("Erreur caméra : " + err.message, "error");
+                }
+            }
+
+            stopVideoPreview() {
+                if (this.currentStream) {
+                    this.currentStream.getTracks().forEach(t => t.stop());
+                    this.currentStream = null;
+                }
+                const vp = document.getElementById('webcam-preview');
+                vp.srcObject = null;
+                vp.style.display = 'none';
+            }
+
+            /* --- MODE DE SAISIE --- */
+            async setInputMode(mode) {
+                this.stopRecording();
+                if (this.currentInputMode === 'video' && mode !== 'video') {
+                    this.stopVideoPreview();
+                }
+
+                this.currentInputMode = mode;
+                const recorder = document.getElementById('recorder-container');
+                const textUI   = document.getElementById('text-input-ui');
+
+                document.getElementById('mode-audio-btn').classList.remove('active');
+                document.getElementById('mode-video-btn').classList.remove('active');
+                document.getElementById('mode-text-btn').classList.remove('active');
+                document.getElementById(`mode-${mode}-btn`).classList.add('active');
+
+                if (mode === 'text') {
+                    recorder.classList.remove('active');
+                    textUI.classList.add('active');
+                    document.getElementById('status-message').innerText = "Saisissez votre réponse par écrit.";
+                    const ta = document.getElementById('answer-text-area');
+                    document.getElementById('btn-next-q').disabled = ta.value.trim().length < 20;
+                } else {
+                    textUI.classList.remove('active');
+                    recorder.classList.add('active');
+
+                    if (mode === 'video') {
+                        document.getElementById('status-message').innerText = "Chargement de la caméra...";
+                        await this.startVideoPreview();
+                        document.getElementById('status-message').innerText = "Cliquez sur le bouton rouge pour enregistrer.";
+                    } else {
+                        document.getElementById('webcam-preview').style.display = 'none';
+                        document.getElementById('status-message').innerText = "Cliquez sur le micro pour enregistrer votre réponse.";
+                        this.currentStream = null;
+                    }
+                }
+                document.getElementById('btn-next-q').disabled = true;
+            }
+
+            /* --- ENREGISTREMENT --- */
+            async startRecording() {
+                try {
+                    let stream = this.currentStream;
+
+                    if (this.currentInputMode === 'audio') {
+                        if (!stream || stream.getVideoTracks().length > 0) {
+                            stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                            this.currentStream = stream;
+                        }
+                    } else if (this.currentInputMode === 'video') {
+                        if (!stream) {
+                            showToast("Erreur : caméra non initialisée. Réessayez.", "error");
+                            return;
+                        }
+                    }
+
+                    /* Déterminer le mimeType supporté */
+                    let options;
+                    if (this.currentInputMode === 'video') {
+                        options = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+                            ? { mimeType: 'video/webm;codecs=vp9' }
+                            : { mimeType: 'video/webm' };
+                    } else {
+                        options = MediaRecorder.isTypeSupported('audio/webm')
+                            ? { mimeType: 'audio/webm' }
+                            : { mimeType: 'audio/ogg' };
+                    }
+
+                    this.mediaRecorder = new MediaRecorder(stream, options);
+                    this.chunks = [];
+
+                    this.mediaRecorder.ondataavailable = e => {
+                        if (e.data.size > 0) this.chunks.push(e.data);
+                    };
+
+                    this.mediaRecorder.onstop = () => {
+                        const mime = this.currentInputMode === 'video' ? 'video/webm' : 'audio/webm';
+                        this.currentBlob = new Blob(this.chunks, { type: mime });
+                        document.getElementById('btn-next-q').disabled = false;
+                        document.getElementById('status-message').innerText = "Enregistrement terminé. Vous pouvez valider.";
+                    };
+
+                    this.mediaRecorder.start();
+                    this.isRecording = true;
+                    this.seconds = 0;
+                    document.getElementById('record-btn').classList.add('recording');
+                    document.getElementById('timer').innerText = "00:00";
+                    document.getElementById('btn-next-q').disabled = true;
+                    document.getElementById('status-message').innerText = "Enregistrement en cours...";
+
+                    this.timer = setInterval(() => {
+                        this.seconds++;
+                        const m = Math.floor(this.seconds / 60).toString().padStart(2, '0');
+                        const s = (this.seconds % 60).toString().padStart(2, '0');
+                        document.getElementById('timer').innerText = `${m}:${s}`;
+                    }, 1000);
+
+                } catch (err) {
+                    console.error(err);
+                    showToast("Erreur enregistrement : " + err.message, "error");
+                }
+            }
+
+            stopRecording() {
+                if (!this.isRecording || !this.mediaRecorder) return;
+                this.mediaRecorder.stop();
+                this.isRecording = false;
+                clearInterval(this.timer);
+                document.getElementById('record-btn').classList.remove('recording');
+            }
+
+            toggleRecording() {
+                if (this.isRecording) this.stopRecording();
+                else this.startRecording();
+            }
+
+            /* --- SOUMISSION RÉPONSE --- */
+            submitAnswer() {
+                const currentQ = this.queue[this.currentIndex];
+                let answerContent = "";
+                let type = "";
+
+                if (this.currentInputMode === 'text') {
+                    const val = document.getElementById('answer-text-area').value;
+                    if (val.trim().length < 20) { showToast("Votre réponse est trop courte (min. 20 caractères).", "error"); return; }
+                    answerContent = val;
+                    type = "text";
+                    this.hasUsedText = true;
+                } else if (this.currentInputMode === 'audio') {
+                    if (this.isRecording) { showToast("Veuillez d'abord arrêter l'enregistrement.", "error"); return; }
+                    if (!this.currentBlob) { showToast("Aucun enregistrement audio détecté.", "error"); return; }
+                    answerContent = "Réponse audio enregistrée";
+                    type = "audio";
+                    this.hasUsedAudio = true;
+                } else if (this.currentInputMode === 'video') {
+                    if (this.isRecording) { showToast("Veuillez d'abord arrêter l'enregistrement.", "error"); return; }
+                    if (!this.currentBlob) { showToast("Aucun enregistrement vidéo détecté.", "error"); return; }
+                    answerContent = "Réponse vidéo enregistrée";
+                    type = "video";
+                    this.hasUsedVideo = true;
+                }
+
+                this.interviewData.push({
+                    question: currentQ.fallbackText,
+                    interviewer: currentQ.interviewer.name,
+                    type: type,
+                    content: answerContent,
+                    blob: this.currentBlob
+                });
+
+                this.currentIndex++;
+                this.loadQuestion();
+            }
+
+            /* --- PROGRESSION --- */
+            updateProgress() {
+                const total = Math.max(this.queue.length, 1);
+                const pct = (this.currentIndex / total) * 100;
+                document.getElementById('progress-fill').style.width = `${pct}%`;
+                document.getElementById('q-progress').innerText = `${this.currentIndex + 1}/${this.queue.length}`;
+            }
+
+            /* --- FIN D'ENTRETIEN --- */
+            finishInterview() {
+                this.stopRecording();
+                this.stopVideoPreview();
+
+                document.getElementById('res-job').innerText   = this.userJob;
+                document.getElementById('res-mode').innerText  = app.currentMode;
+                document.getElementById('res-count').innerText = this.interviewData.length;
+
+                const actions = document.querySelector('.result-actions');
+                actions.innerHTML = '';
+
+                if (this.hasUsedText) {
+                    const btn = document.createElement('button');
+                    btn.className = 'btn btn-primary';
+                    btn.innerText = '📄 Télécharger le PDF';
+                    btn.onclick = () => this.downloadPDF();
+                    actions.appendChild(btn);
+                }
+                if (this.hasUsedAudio || this.hasUsedVideo) {
+                    const btn = document.createElement('button');
+                    btn.className = 'btn btn-primary';
+                    btn.style.background = 'linear-gradient(135deg, var(--secondary) 0%, var(--secondary-dark) 100%)';
+                    btn.style.boxShadow = '0 4px 15px rgba(201, 169, 110, 0.35)';
+                    btn.innerText = '📥 Télécharger le ZIP';
+                    btn.onclick = () => this.downloadZip();
+                    actions.appendChild(btn);
+                }
+
+                app.showScreen('screen-results');
+            }
+
+            /* --- NETTOYAGE --- */
+            cleanup() {
+                this.stopRecording();
+                this.stopVideoPreview();
+                if (this.synth.speaking) this.synth.cancel();
+            }
+
+            /* --- EXPORT PDF --- */
+            downloadPDF() {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+
+                /* En-tête */
+                doc.setFontSize(22);
+                doc.setTextColor(166, 107, 126);
+                doc.text("Rapport d'Entretien Simul\u00e9", 105, 22, null, null, null, "center");
+
+                doc.setDrawColor(201, 169, 110);
+                doc.setLineWidth(0.8);
+                doc.line(50, 27, 160, 27);
+
+                doc.setFontSize(11);
+                doc.setTextColor(61, 43, 51);
+                doc.text(`Candidat : ${this.userName}`, 20, 37);
+                doc.text(`Poste : ${this.userJob}`, 20, 44);
+                doc.text(`Date : ${new Date().toLocaleDateString('fr-FR')}`, 20, 51);
+
+                let y = 65;
+                const pageH = doc.internal.pageSize.height;
+
+                this.interviewData.forEach((item, i) => {
+                    if (item.type !== 'text') return;
+                    if (y > pageH - 55) { doc.addPage(); y = 20; }
+
+                    doc.setFont("helvetica", "bold");
+                    doc.setTextColor(139, 94, 131);
+                    doc.text(`Question ${i + 1} (${item.interviewer})`, 20, y);
+                    y += 7;
+
+                    doc.setFont("helvetica", "normal");
+                    doc.setTextColor(80, 60, 70);
+                    const qLines = doc.splitTextToSize(item.question, 170);
+                    doc.text(qLines, 20, y);
+                    y += (qLines.length * 5.5) + 5;
+
+                    doc.setFont("helvetica", "bold");
+                    doc.setTextColor(166, 107, 126);
+                    doc.text("R\u00e9ponse :", 20, y);
+                    y += 7;
+
+                    doc.setFont("helvetica", "normal");
+                    doc.setTextColor(60, 50, 55);
+                    const aLines = doc.splitTextToSize(item.content, 170);
+                    doc.text(aLines, 20, y);
+                    y += (aLines.length * 5.5) + 14;
+                });
+
+                doc.save(`Entretien_Beaute_${this.userName}.pdf`);
+                showToast("PDF g\u00e9n\u00e9r\u00e9 avec succ\u00e8s !");
+            }
+
+            /* --- EXPORT ZIP --- */
+            downloadZip() {
+                const zip = new JSZip();
+                this.interviewData.forEach((item, i) => {
+                    if ((item.type === 'audio' || item.type === 'video') && item.blob) {
+                        const ext = item.type === 'video' ? 'webm' : 'webm';
+                        zip.file(`Q${i + 1}_${item.interviewer}.${ext}`, item.blob);
+                    }
+                });
+                zip.generateAsync({ type: "blob" }).then(content => {
+                    saveAs(content, `Entretien_Beaute_${this.userName}.zip`);
+                });
+                showToast("ZIP g\u00e9n\u00e9r\u00e9 avec succ\u00e8s !");
+            }
+        }
+
+        /* ============================================
+           TOAST NOTIFICATIONS
+           ============================================ */
+        function showToast(msg, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.style.borderLeftColor = type === 'error' ? 'var(--danger)' : 'var(--secondary)';
+            toast.innerHTML = `<span>${msg}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        /* ============================================
+           INITIALISATION
+           ============================================ */
+        const app = new AppManager();
+        const interviewEngine = new InterviewEngine();
+
+        /* Préchargement des voix de synthèse */
+        if (window.speechSynthesis && window.speechSynthesis.onvoiceschanged !== undefined) {
+            window.speechSynthesis.onvoiceschanged = () => { window.speechSynthesis.getVoices(); };
+        }
+    </script>
+</body>
+</html>
